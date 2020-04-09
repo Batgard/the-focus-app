@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:english_words/english_words.dart';
+import 'package:thefocusapp/data/persistence/LocalKeyValueStorage.dart';
+import 'package:thefocusapp/scenes/favorite/presentation/FavoriteScreenView.dart';
+
+import 'scenes/timer/presentation/TimerScreenView.dart';
 
 void main() => runApp(MyApp());
 
@@ -7,20 +12,66 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
+        title: "Title",
+        theme: ThemeData(
+          primarySwatch: Colors.amber,
+        ),
+        home: TimerScreenView()
+    );
+  }
+}
+
+class MyStatefulWidget extends StatefulWidget {
+  final String title;
+
+  MyStatefulWidget({Key key, this.title}) : super(key: key);
+
+  @override
+  MyStatefulWidgetViewModel createState() {
+    return MyStatefulWidgetViewModel();
+  }
+}
+
+class MyStatefulWidgetViewModel extends State<MyStatefulWidget> {
+  WordPair state = WordPair.random();
+  LocalKeyValueStorage storage = LocalKeyValueStorage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("First App bar title"),
+        actions: <Widget>[
+          IconButton(
+              icon: Icon(Icons.favorite),
+              onPressed: () {
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (BuildContext context) {
+                  return FavoriteScreenView();
+                }));
+              })
+        ],
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      body: Column(children: [
+        Center(),
+        Padding(
+          padding: EdgeInsets.all(25),
+          child: Text(state.asString),
+        ),
+        FloatingActionButton(
+          child: Text("Refresh"),
+          onPressed: () => {
+            setState(() {
+              state = WordPair.random();
+            })
+          },
+        ),
+        IconButton(
+          icon: Icon(Icons.add),
+          onPressed: () =>
+              {storage.addToList("favoriteWordPair", state.asString)},
+        )
+      ]),
     );
   }
 }
