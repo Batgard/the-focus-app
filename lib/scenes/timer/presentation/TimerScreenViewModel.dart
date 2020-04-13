@@ -23,6 +23,7 @@ class TimerScreenViewModel extends State<TimerScreenView> {
         title: Text("Focus"),
       ),
       body: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: <Widget>[
           Center(),
           Padding(
@@ -32,6 +33,7 @@ class TimerScreenViewModel extends State<TimerScreenView> {
                 stream: timer.displayableValue(),
                 builder: buildTimer),
           ),
+          _formatCompletedPomodoroCount(),
           FloatingActionButton(
             foregroundColor: Colors.white,
             backgroundColor: timer.color(),
@@ -53,13 +55,28 @@ class TimerScreenViewModel extends State<TimerScreenView> {
       style: TextStyle(color: timer.color()),
     );
   }
+
+  Text _formatCompletedPomodoroCount() {
+    String pomodoro = "🍅";
+    String completedPomodoros = "";
+    for (int i = 0; i< timer.getCompletedPomodoroCount(); i++) {
+      completedPomodoros = completedPomodoros+pomodoro;
+    }
+    return Text(completedPomodoros);
+  }
 }
 
 class PomodoroTimer {
-  TimerValue _value = TimerValue(minutes: 25, seconds: 0);
+  static const _pomodoroInitialMinutesDefaultValue = 25;
+  static const _intiialSecondsDefaultValue = 0;
+  TimerValue _value = TimerValue(
+      minutes: _pomodoroInitialMinutesDefaultValue,
+      seconds: _intiialSecondsDefaultValue
+  );
   var _break = false;
   var _running = false;
   Timer _timer;
+  var _completedPomodorosCount = 0;
 
   final _streamController = StreamController<String>();
   final _currentStatusStreamController = StreamController<bool>();
@@ -83,12 +100,12 @@ class PomodoroTimer {
   }
 
   void _startPomodoro() {
-    _value.reset(minutes: 25, seconds: 0);
+    _value.reset(minutes: _pomodoroInitialMinutesDefaultValue, seconds: _intiialSecondsDefaultValue);
     _startTimer();
   }
 
   void _startBreak() {
-    _value.reset(minutes: 5, seconds: 0);
+    _value.reset(minutes: 1, seconds: _intiialSecondsDefaultValue);
     _startTimer();
   }
 
@@ -99,12 +116,13 @@ class PomodoroTimer {
 
   void _restart() {
     if (_break) {
-      _startBreak();
-    } else {
       _startPomodoro();
+    } else {
+      _completedPomodorosCount++;
+      _startBreak();
     }
-    _break = !_break;
     _currentStatusStreamController.sink.add(true);
+    _break = !_break;
   }
 
   void _resume() {
@@ -118,6 +136,8 @@ class PomodoroTimer {
   String _formatSeconds(int seconds) {
     return seconds < 10 ? "0$seconds": "$seconds";
   }
+
+  int getCompletedPomodoroCount() => _completedPomodorosCount;
 
   void toggle() {
     if (_running) {
