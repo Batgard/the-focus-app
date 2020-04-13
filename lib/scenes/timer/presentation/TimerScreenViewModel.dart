@@ -9,6 +9,14 @@ class TimerScreenViewModel extends State<TimerScreenView> {
   PomodoroTimer timer = PomodoroTimer();
 
   @override
+  void initState() {
+    super.initState();
+    timer.timerTypeChanges().listen((bool event) {
+      setState(() {});
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -20,11 +28,13 @@ class TimerScreenViewModel extends State<TimerScreenView> {
           Padding(
             padding: EdgeInsets.all(16),
             child: StreamBuilder(
-                initialData: "25:00",
+                initialData: timer.getInitialValue(),
                 stream: timer.displayableValue(),
                 builder: buildTimer),
           ),
           FloatingActionButton(
+            foregroundColor: Colors.white,
+            backgroundColor: timer.color(),
             child: Icon(timer.isRunning() ? Icons.pause : Icons.play_arrow),
             onPressed: () {
               setState(() {
@@ -38,29 +48,48 @@ class TimerScreenViewModel extends State<TimerScreenView> {
   }
 
   Widget buildTimer(BuildContext context, AsyncSnapshot asyncSnapshot) {
-    return Text(asyncSnapshot.data);
+    return Text(
+      asyncSnapshot.data,
+      style: TextStyle(color: timer.color()),
+    );
   }
 }
 
 class PomodoroTimer {
-  TimerValue _value = TimerValue();
-  bool _running = false;
+  TimerValue _value = TimerValue(minutes: 25, seconds: 0);
+  var _break = false;
+  var _running = false;
   Timer _timer;
 
   final _streamController = StreamController<String>();
+  final _currentStatusStreamController = StreamController<bool>();
 
-  void _start() {
+  PomodoroTimer({TimerValue value}) {
+    if (value != null) {
+      _value = value;
+    }
+  }
+
+  void _startTimer() {
     _running = true;
-    //TODO: Check how to run an action every second on a dedicated thread
     _timer = Timer.periodic(Duration(seconds: 1), (t) {
-      _value.decrementOneSecond();
-      if (!_value.isComplete()) {
-        _streamController.sink.add(formatValue(_value));
-      } else {
+      if (_value.isComplete()) {
         _pause();
-        //TODO: Start new Timer for break
+        _restart();
       }
+      _value.decrementOneSecond();
+      _streamController.sink.add(_formatValue(_value));
     });
+  }
+
+  void _startPomodoro() {
+    _value.reset(minutes: 25, seconds: 0);
+    _startTimer();
+  }
+
+  void _startBreak() {
+    _value.reset(minutes: 5, seconds: 0);
+    _startTimer();
   }
 
   void _pause() {
@@ -68,39 +97,77 @@ class PomodoroTimer {
     _timer.cancel();
   }
 
+  void _restart() {
+    if (_break) {
+      _startBreak();
+    } else {
+      _startPomodoro();
+    }
+    _break = !_break;
+    _currentStatusStreamController.sink.add(true);
+  }
+
+  void _resume() {
+    _startTimer();
+  }
+
+  String _formatValue(TimerValue value) {
+    return "${_value._minutes}:${_formatSeconds(_value._seconds)}";
+  }
+
+  String _formatSeconds(int seconds) {
+    return seconds < 10 ? "0$seconds": "$seconds";
+  }
+
   void toggle() {
     if (_running) {
       _pause();
     } else {
-      _start();
+      _resume();
     }
   }
 
   bool isRunning() => _running;
 
-  String formatValue(TimerValue value) {
-    return "${_value.minutes} : ${_value.seconds}";
+  MaterialColor color() {
+    return _break ? Colors.green : Colors.blueGrey;
   }
 
   Stream<String> displayableValue() {
     return _streamController.stream;
   }
+
+  Stream<bool> timerTypeChanges() => _currentStatusStreamController.stream;
+
+  String getInitialValue() => _formatValue(_value);
 }
 
 class TimerValue {
-  int minutes = 25;
-  int seconds = 0;
+  final int defaultMinutes = 25;
+  final int defaultSeconds = 0;
+  int _minutes;
+  int _seconds;
 
   void decrementOneSecond() {
-    if (seconds == 0) {
-      if (minutes != 0) {
-        seconds = 59;
-        minutes--;
+    if (_seconds == 0) {
+      if (_minutes != 0) {
+        _seconds = 59;
+        _minutes--;
       }
     } else {
-      seconds--;
+      _seconds--;
     }
   }
 
-  bool isComplete() => seconds == 0 && minutes == 0;
+  void reset({int minutes, int seconds}) {
+    _minutes = minutes;
+    _seconds = seconds;
+  }
+
+  bool isComplete() => _seconds == 0 && _minutes == 0;
+
+  TimerValue({int minutes, int seconds}) {
+    _minutes = minutes;
+    _seconds = seconds;
+  }
 }
