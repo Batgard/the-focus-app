@@ -56,13 +56,19 @@ class TimerScreenViewModel extends State<TimerScreenView> {
 }
 
 class PomodoroTimer {
-  TimerValue _value = TimerValue(minutes: 0, seconds: 10);
+  TimerValue _value = TimerValue(minutes: 25, seconds: 0);
   var _break = false;
   var _running = false;
   Timer _timer;
 
   final _streamController = StreamController<String>();
   final _currentStatusStreamController = StreamController<bool>();
+
+  PomodoroTimer({TimerValue value}) {
+    if (value != null) {
+      _value = value;
+    }
+  }
 
   void _startTimer() {
     _running = true;
@@ -77,12 +83,12 @@ class PomodoroTimer {
   }
 
   void _startPomodoro() {
-    _value.reset(minutes: 0, seconds: 10);
+    _value.reset(minutes: 25, seconds: 0);
     _startTimer();
   }
 
   void _startBreak() {
-    _value.reset(minutes: 0, seconds: 10);
+    _value.reset(minutes: 5, seconds: 0);
     _startTimer();
   }
 
@@ -106,7 +112,11 @@ class PomodoroTimer {
   }
 
   String _formatValue(TimerValue value) {
-    return "${_value._minutes} : ${_value._seconds}";
+    return "${_value._minutes}:${_formatSeconds(_value._seconds)}";
+  }
+
+  String _formatSeconds(int seconds) {
+    return seconds < 10 ? "0$seconds": "$seconds";
   }
 
   void toggle() {
@@ -133,6 +143,8 @@ class PomodoroTimer {
 }
 
 class TimerValue {
+  final int defaultMinutes = 25;
+  final int defaultSeconds = 0;
   int _minutes;
   int _seconds;
 
