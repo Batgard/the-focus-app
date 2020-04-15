@@ -13,7 +13,13 @@ void main() {
   test("Seconds should always be displayed as two digits", () {
     //Given
     var pomodoroTimer =
-        PomodoroTimer(value: TimerValue(minutes: 0, seconds: 10));
+        PomodoroTimer(configuration: TimerConfiguration(
+            pomodoroDuration: TimerDuration(minutes: 0, seconds: 10),
+            shortBreakDuration: TimerDuration(minutes: 0,seconds: 10),
+            longBreakDuration: TimerDuration(minutes: 0, seconds: 10),
+            numberOfCompletedPomodorosRequiredForLongBreak: 4
+          )
+        );
     //When
     pomodoroTimer.toggle();
     //Then
@@ -33,9 +39,7 @@ void main() {
     //When
     pomodoroTimer.toggle();
     //Then
-    pomodoroTimer.displayableValue().listen(expectAsync1((displayedValue) {
-      expect(displayedValue, equals("24:59"));
-    }, max: 10));
+    expect(pomodoroTimer.displayableValue(), emitsInOrder(["24:59"]));
   });
 
   test("Given Pomodoro is paused When toggling Then timer should be running",
@@ -71,26 +75,69 @@ void main() {
       "Given completed pomodoro count equals 0 When I complete a pomodoro Then count equals 1",
       () {
     //Given
-    var pomodoroTimer = PomodoroTimer(value: TimerValue(minutes: 0, seconds: 1));
+    var pomodoroTimer =
+        PomodoroTimer(
+            configuration: TimerConfiguration(
+                pomodoroDuration: TimerDuration(minutes: 0, seconds: 1),
+                shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
+                longBreakDuration: TimerDuration(minutes: 0, seconds: 1),
+                numberOfCompletedPomodorosRequiredForLongBreak: 4
+            )
+        );
     //When
     pomodoroTimer.toggle();
     //Then
-    pomodoroTimer.timerTypeChanges().listen(expectAsync1( (didChange) {
-      expect(pomodoroTimer.getCompletedPomodoroCount(), 1);
-    })
+    pomodoroTimer.timerTypeChanges().listen(expectAsync1((didChange) {
+        expect(pomodoroTimer.getCompletedPomodoroCount(), 1);
+      }, count: 1, max: 1)
     );
   });
 
   test("When I complete a pomodoro Then start a break", () {
     //Given
-    var pomodoroTimer = PomodoroTimer(value: TimerValue(minutes: 0, seconds: 1));
+    var pomodoroTimer =
+        PomodoroTimer(
+            configuration: TimerConfiguration(
+                pomodoroDuration: TimerDuration(minutes: 0, seconds: 1),
+                shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
+                longBreakDuration: TimerDuration(minutes: 0, seconds: 1),
+                numberOfCompletedPomodorosRequiredForLongBreak: 4
+            )
+        );
     //When
     pomodoroTimer.toggle();
     //Then
-    pomodoroTimer.timerTypeChanges().listen(expectAsync1( (didChange) {
-      expect(pomodoroTimer.color(), Colors.green);
-    })
+    pomodoroTimer.timerTypeChanges().listen(expectAsync1((didChange) {
+        expect(pomodoroTimer.color(), Colors.green);
+      }, count: 1, max: 1) // NB: The framework is buggy and calls the method more than 1 time before considering the test complete, when it should not.
     );
-  }
-  );
+  });
+
+  test("Given I have completed 2 Pomodoros When I complete the 3rd one I get a long break", () {
+    var pomodoroTimer =
+    PomodoroTimer(
+        configuration: TimerConfiguration(
+            pomodoroDuration: TimerDuration(minutes: 0, seconds: 1),
+            shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
+            longBreakDuration: TimerDuration(minutes: 0, seconds: 10),
+            numberOfCompletedPomodorosRequiredForLongBreak: 3
+        )
+    );
+    //When
+    pomodoroTimer.toggle();
+    //Then
+    var pomodoroEmission = "0:00";
+    var shortBreakEmission = "0:00";
+    var longBreakEmission = "0:09";
+    expect(pomodoroTimer.displayableValue(), emitsInOrder(
+        [
+          pomodoroEmission,
+          shortBreakEmission,
+          pomodoroEmission,
+          shortBreakEmission,
+          pomodoroEmission,
+          longBreakEmission
+        ]
+    ));
+  });
 }

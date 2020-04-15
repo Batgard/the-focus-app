@@ -67,12 +67,10 @@ class TimerScreenViewModel extends State<TimerScreenView> {
 }
 
 class PomodoroTimer {
-  static const _pomodoroInitialMinutesDefaultValue = 25;
-  static const _intiialSecondsDefaultValue = 0;
-  TimerValue _value = TimerValue(
-      minutes: _pomodoroInitialMinutesDefaultValue,
-      seconds: _intiialSecondsDefaultValue
-  );
+
+  TimerConfiguration configuration;
+
+  TimerValue _value;
   var _break = false;
   var _running = false;
   Timer _timer;
@@ -81,10 +79,14 @@ class PomodoroTimer {
   final _streamController = StreamController<String>();
   final _currentStatusStreamController = StreamController<bool>();
 
-  PomodoroTimer({TimerValue value}) {
-    if (value != null) {
-      _value = value;
+  PomodoroTimer({this.configuration}) {
+    if (configuration == null) {
+      configuration = TimerConfiguration.setUpWithDefaults();
     }
+    _value = TimerValue(
+        minutes: configuration.pomodoroDuration.minutes,
+        seconds: configuration.pomodoroDuration.seconds
+    );
   }
 
   void _startTimer() {
@@ -100,12 +102,21 @@ class PomodoroTimer {
   }
 
   void _startPomodoro() {
-    _value.reset(minutes: _pomodoroInitialMinutesDefaultValue, seconds: _intiialSecondsDefaultValue);
+    _value.reset(minutes: configuration.pomodoroDuration.minutes,
+        seconds: configuration.pomodoroDuration.seconds);
     _startTimer();
   }
 
-  void _startBreak() {
-    _value.reset(minutes: 1, seconds: _intiialSecondsDefaultValue);
+  void _startShortBreak() {
+    _value.reset(minutes: configuration.shortBreakDuration.minutes,
+        seconds: configuration.shortBreakDuration.seconds
+    );
+    _startTimer();
+  }
+
+  void _startLongBreak() {
+    _value.reset(minutes: configuration.longBreakDuration.minutes,
+        seconds: configuration.longBreakDuration.seconds);
     _startTimer();
   }
 
@@ -119,7 +130,11 @@ class PomodoroTimer {
       _startPomodoro();
     } else {
       _completedPomodorosCount++;
-      _startBreak();
+      if (_completedPomodorosCount % configuration.numberOfCompletedPomodorosRequiredForLongBreak == 0) {
+        _startLongBreak();
+      } else {
+        _startShortBreak();
+      }
     }
     _currentStatusStreamController.sink.add(true);
     _break = !_break;
@@ -189,5 +204,35 @@ class TimerValue {
   TimerValue({int minutes, int seconds}) {
     _minutes = minutes;
     _seconds = seconds;
+  }
+}
+
+class TimerDuration {
+  final int minutes;
+  final int seconds;
+
+  TimerDuration({this.minutes, this.seconds});
+
+}
+
+class TimerConfiguration {
+
+  final TimerDuration pomodoroDuration;
+  final TimerDuration shortBreakDuration;
+  final TimerDuration longBreakDuration;
+  final int numberOfCompletedPomodorosRequiredForLongBreak;
+
+  TimerConfiguration({
+    this.pomodoroDuration,
+    this.shortBreakDuration,
+    this.longBreakDuration,
+    this.numberOfCompletedPomodorosRequiredForLongBreak
+  });
+
+  factory TimerConfiguration.setUpWithDefaults() {
+    return new TimerConfiguration(pomodoroDuration: TimerDuration(minutes: 25, seconds: 0),
+        shortBreakDuration: TimerDuration(minutes: 5, seconds: 0),
+        longBreakDuration: TimerDuration(minutes: 15, seconds: 0),
+        numberOfCompletedPomodorosRequiredForLongBreak: 4);
   }
 }
