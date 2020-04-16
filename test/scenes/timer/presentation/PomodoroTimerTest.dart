@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:test/test.dart';
 import 'package:thefocusapp/scenes/timer/presentation/TimerScreenViewModel.dart';
 
@@ -87,7 +86,7 @@ void main() {
     //When
     pomodoroTimer.toggle();
     //Then
-    pomodoroTimer.timerTypeChanges().listen(expectAsync1((didChange) {
+    pomodoroTimer.timerTypeChanges().listen(expectAsync1((activity) {
         expect(pomodoroTimer.getCompletedPomodoroCount(), 1);
       }, count: 1, max: 1)
     );
@@ -107,8 +106,8 @@ void main() {
     //When
     pomodoroTimer.toggle();
     //Then
-    pomodoroTimer.timerTypeChanges().listen(expectAsync1((didChange) {
-        expect(pomodoroTimer.color(), Colors.green);
+    pomodoroTimer.timerTypeChanges().listen(expectAsync1((activity) {
+        expect(activity.type, ActivityType.shortBreak);
       }, count: 1, max: 1) // NB: The framework is buggy and calls the method more than 1 time before considering the test complete, when it should not.
     );
   });
