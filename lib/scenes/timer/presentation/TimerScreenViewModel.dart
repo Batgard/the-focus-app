@@ -7,19 +7,19 @@ import 'TimerScreenView.dart';
 
 class TimerScreenViewModel extends State<TimerScreenView> {
   static const String routeId = "TimerScreen";
-  
-  PomodoroTimer timer = PomodoroTimer();
-  TimerNotification _notification;
+
+  final TimeFormatter _timeFormatter = TimeFormatter();
+  PomodoroTimer timer;
 
   @override
   void initState() {
     super.initState();
+    final notification = TimerNotification(context: context, formatter: _timeFormatter);
+    timer = PomodoroTimer(formatter: _timeFormatter, notification: notification);
     timer.timerTypeChanges().listen((Activity startingActivity) {
       setState(() {
-        _notification.showNotification(startingActivity);
       });
     });
-    _notification = TimerNotification(context: context);
   }
 
   @override
@@ -74,10 +74,12 @@ class TimerScreenViewModel extends State<TimerScreenView> {
 
 class PomodoroTimer {
 
+  TimerNotification notification;
   TimerConfiguration configuration;
+  TimeFormatter formatter;
 
   TimerValue _value;
-  var _break = false;
+  ActivityType _activityType = ActivityType.pomodoro;
   var _running = false;
   Timer _timer;
   var _completedPomodorosCount = 0;
@@ -85,14 +87,14 @@ class PomodoroTimer {
   final _streamController = StreamController<String>();
   final _currentStatusStreamController = StreamController<Activity>();
 
-  PomodoroTimer({this.configuration}) {
+  PomodoroTimer({this.configuration, this.formatter, this.notification}) {
     if (configuration == null) {
       configuration = TimerConfiguration.setUpWithDefaults();
     }
-    _value = TimerValue(
-        minutes: configuration.pomodoroDuration.minutes,
-        seconds: configuration.pomodoroDuration.seconds
-    );
+    if (formatter == null) {
+      formatter = TimeFormatter();
+    }
+    _value = TimerValue(duration: configuration.pomodoroDuration);
   }
 
   void _startTimer() {
@@ -103,26 +105,23 @@ class PomodoroTimer {
         _restart();
       }
       _value.decrementOneSecond();
-      _streamController.sink.add(_formatValue(_value));
+      _streamController.sink.add(formatter.formatValue(_value.asDuration()));
+      notification.updateExistingNotification(getCurrentActivity());
     });
   }
 
   void _startPomodoro() {
-    _value.reset(minutes: configuration.pomodoroDuration.minutes,
-        seconds: configuration.pomodoroDuration.seconds);
+    _value.reset(duration: configuration.pomodoroDuration);
     _startTimer();
   }
 
   void _startShortBreak() {
-    _value.reset(minutes: configuration.shortBreakDuration.minutes,
-        seconds: configuration.shortBreakDuration.seconds
-    );
+    _value.reset(duration: configuration.shortBreakDuration);
     _startTimer();
   }
 
   void _startLongBreak() {
-    _value.reset(minutes: configuration.longBreakDuration.minutes,
-        seconds: configuration.longBreakDuration.seconds);
+    _value.reset(duration: configuration.longBreakDuration);
     _startTimer();
   }
 
@@ -132,40 +131,31 @@ class PomodoroTimer {
   }
 
   void _restart() {
-    ActivityType activityType;
     TimerDuration activityDuration;
 
-    if (_break) {
-      activityType = ActivityType.pomodoro;
+    if (_activityType != ActivityType.pomodoro) {
+      _activityType = ActivityType.pomodoro;
       activityDuration = configuration.pomodoroDuration;
       _startPomodoro();
     } else {
       _completedPomodorosCount++;
       if (_completedPomodorosCount % configuration.numberOfCompletedPomodorosRequiredForLongBreak == 0) {
-        activityType = ActivityType.longBreak;
+        _activityType = ActivityType.longBreak;
         activityDuration = configuration.longBreakDuration;
         _startLongBreak();
       } else {
-        activityType = ActivityType.shortBreak;
+        _activityType = ActivityType.shortBreak;
         activityDuration = configuration.shortBreakDuration;
         _startShortBreak();
       }
     }
-    final activity = Activity(activityType, activityDuration);
+    final activity = Activity(_activityType, activityDuration);
     _currentStatusStreamController.sink.add(activity);
-    _break = !_break;
+    notification.showNewActivityStartNotification(activity);
   }
 
   void _resume() {
     _startTimer();
-  }
-
-  String _formatValue(TimerValue value) {
-    return "${_value._minutes}:${_formatSeconds(_value._seconds)}";
-  }
-
-  String _formatSeconds(int seconds) {
-    return seconds < 10 ? "0$seconds": "$seconds";
   }
 
   int getCompletedPomodoroCount() => _completedPomodorosCount;
@@ -181,7 +171,7 @@ class PomodoroTimer {
   bool isRunning() => _running;
 
   MaterialColor color() {
-    return _break ? Colors.green : Colors.blueGrey;
+    return _activityType == ActivityType.pomodoro ? Colors.blueGrey: Colors.green;
   }
 
   Stream<String> displayableValue() {
@@ -190,14 +180,23 @@ class PomodoroTimer {
 
   Stream<Activity> timerTypeChanges() => _currentStatusStreamController.stream;
 
-  String getInitialValue() => _formatValue(_value);
+  String getInitialValue() => formatter.formatValue(_value.asDuration());
+
+  Activity getCurrentActivity() {
+    return Activity(_activityType, _value.asDuration());
+  }
 }
 
 class TimerValue {
-  final int defaultMinutes = 25;
-  final int defaultSeconds = 0;
+
+  final TimerDuration duration;
   int _minutes;
   int _seconds;
+
+  TimerValue({this.duration}) {
+    _minutes = duration.minutes;
+    _seconds = duration.seconds;
+  }
 
   void decrementOneSecond() {
     if (_seconds == 0) {
@@ -210,17 +209,19 @@ class TimerValue {
     }
   }
 
-  void reset({int minutes, int seconds}) {
-    _minutes = minutes;
-    _seconds = seconds;
+  void reset({TimerDuration duration}) {
+    if (duration == null) {
+      _minutes = this.duration.minutes;
+      _seconds = this.duration.seconds;
+    } else {
+      _minutes = duration.minutes;
+      _seconds = duration.seconds;
+    }
   }
 
   bool isComplete() => _seconds == 0 && _minutes == 0;
 
-  TimerValue({int minutes, int seconds}) {
-    _minutes = minutes;
-    _seconds = seconds;
-  }
+  TimerDuration asDuration() => TimerDuration(minutes: _minutes, seconds: _seconds);
 }
 
 class TimerDuration {
@@ -262,46 +263,92 @@ class TimerConfiguration {
 
 class TimerNotification {
 
+  static const int notificationId = 0;
+  final TimeFormatter formatter;
   final BuildContext context;
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
   var initializationSettingsAndroid = new AndroidInitializationSettings('ic_tomato_timer');
   IOSInitializationSettings initializationSettingsIOS;
   InitializationSettings initializationSettings;
+  NotificationChannel channel;
+  NotificationDetails platformChannelSpecifics;
 
-
-  TimerNotification({this.context}) {
+  TimerNotification({this.context, this.formatter}) {
     initializationSettingsIOS = new IOSInitializationSettings(
         onDidReceiveLocalNotification: null);
     initializationSettings = new InitializationSettings(
         initializationSettingsAndroid, initializationSettingsIOS);
     flutterLocalNotificationsPlugin.initialize(initializationSettings,
         onSelectNotification: null);
-  }
 
-  void showNotification(Activity activity) async {
-
-    NotificationChannel channel = NotificationChannel("newActivityStart",
+    channel = NotificationChannel("newActivityStart",
         "New Activity Start",
         "Receive a notification when a new pomodoro or break start");
+
+    var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+        channel.id, channel.name, channel.description,
+        importance: Importance.Max, priority: Priority.High);
+    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+    platformChannelSpecifics = new NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+  }
+
+  void updateExistingNotification(Activity activity) async {
     NotificationContent content;
 
     switch(activity.type) {
       case ActivityType.pomodoro: {
-        content = NotificationContent(0,
+        content = NotificationContent(
+            "Pomodoro",
+            "Time left: ${formatter.formatValue(activity.duration)}",
+            TimerScreenViewModel.routeId);
+        break;
+      }
+      case ActivityType.shortBreak: {
+        content = NotificationContent(
+            "Break!",
+            "Time left: ${formatter.formatValue(activity.duration)}",
+            TimerScreenViewModel.routeId);
+        break;
+      }
+      case ActivityType.longBreak: {
+        content = NotificationContent(
+            "Break!",
+            "Time left: ${formatter.formatValue(activity.duration)}",
+            TimerScreenViewModel.routeId);
+        break;
+      }
+    }
+
+    await flutterLocalNotificationsPlugin.show(
+        notificationId,
+        content.title,
+        content.body,
+        platformChannelSpecifics,
+        payload: content.payload);
+  }
+
+  void showNewActivityStartNotification(Activity activity) async {
+
+    NotificationContent content;
+
+    switch(activity.type) {
+      case ActivityType.pomodoro: {
+        content = NotificationContent(
             "It's time to focus",
             "A new pomodoro of ${activity.duration.minutes}m started",
             TimerScreenViewModel.routeId);
         break;
       }
       case ActivityType.shortBreak: {
-        content = NotificationContent(1,
+        content = NotificationContent(
             "Break!",
             "A new short break of ${activity.duration.minutes}m started",
             TimerScreenViewModel.routeId);
         break;
       }
       case ActivityType.longBreak: {
-        content = NotificationContent(2,
+        content = NotificationContent(
             "Break!",
             "A new long break of ${activity.duration.minutes}m started",
             TimerScreenViewModel.routeId);
@@ -309,15 +356,13 @@ class TimerNotification {
       }
     }
 
-    var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
-        channel.id, channel.name, channel.description,
-        importance: Importance.Max, priority: Priority.High);
-    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
-    var platformChannelSpecifics = new NotificationDetails(
-        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
-        0, content.title, content.body, platformChannelSpecifics,
-        payload: content.payload);
+        notificationId,
+        content.title,
+        content.body,
+        platformChannelSpecifics,
+        payload: content.payload
+    );
   }
 
 }
@@ -332,12 +377,11 @@ class NotificationChannel {
 }
 
 class NotificationContent {
-  final int id;
   final String title;
   final String body;
   final String payload;
 
-  NotificationContent(this.id, this.title, this.body, this.payload);
+  NotificationContent(this.title, this.body, this.payload);
 }
 
 enum ActivityType {
@@ -353,3 +397,12 @@ class Activity {
   Activity(this.type, this.duration);
 }
 
+class TimeFormatter {
+  String formatValue(TimerDuration value) {
+    return "${value.minutes}:${_formatSeconds(value.seconds)}";
+  }
+
+  String _formatSeconds(int seconds) {
+    return seconds < 10 ? "0$seconds": "$seconds";
+  }
+}

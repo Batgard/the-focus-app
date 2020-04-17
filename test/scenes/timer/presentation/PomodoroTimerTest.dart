@@ -1,10 +1,11 @@
 import 'package:test/test.dart';
+import 'package:mockito/mockito.dart';
 import 'package:thefocusapp/scenes/timer/presentation/TimerScreenViewModel.dart';
 
 void main() {
   test("Initial value should be 25:00", () {
     //Given
-    var pomodoroTimer = PomodoroTimer();
+    var pomodoroTimer = PomodoroTimer(notification: MockNotification());
     //Then
     expect(pomodoroTimer.getInitialValue(), equals("25:00"));
   });
@@ -17,7 +18,8 @@ void main() {
             shortBreakDuration: TimerDuration(minutes: 0,seconds: 10),
             longBreakDuration: TimerDuration(minutes: 0, seconds: 10),
             numberOfCompletedPomodorosRequiredForLongBreak: 4
-          )
+          ),
+            notification: MockNotification()
         );
     //When
     pomodoroTimer.toggle();
@@ -27,14 +29,14 @@ void main() {
 
   test("When creating new PomodoroTimer Then timer is paused", () {
     //When
-    var pomodoroTimer = PomodoroTimer();
+    var pomodoroTimer = PomodoroTimer(notification: MockNotification());
     //Then
     expect(pomodoroTimer.isRunning(), isFalse);
   });
 
   test("When timer is running Then timer should emit value", () {
     //When
-    var pomodoroTimer = PomodoroTimer();
+    var pomodoroTimer = PomodoroTimer(notification: MockNotification());
     //When
     pomodoroTimer.toggle();
     //Then
@@ -44,7 +46,7 @@ void main() {
   test("Given Pomodoro is paused When toggling Then timer should be running",
       () {
     //Given
-    var pomodoroTimer = PomodoroTimer();
+    var pomodoroTimer = PomodoroTimer(notification: MockNotification());
     //When
     pomodoroTimer.toggle();
     //Then
@@ -53,7 +55,7 @@ void main() {
 
   test("Given Pomodoro on going When toggling Then pause timer", () {
     //Given
-    var pomodoroTimer = PomodoroTimer();
+    var pomodoroTimer = PomodoroTimer(notification: MockNotification());
     pomodoroTimer.toggle();
     //When
     pomodoroTimer.toggle();
@@ -65,7 +67,7 @@ void main() {
       "When I have not completed any pomodoro Then completed pomodoro count equals 0",
       () {
     //Given
-    var pomodoroTimer = PomodoroTimer();
+    var pomodoroTimer = PomodoroTimer(notification: MockNotification());
     //Then
     expect(pomodoroTimer.getCompletedPomodoroCount(), 0);
   });
@@ -81,7 +83,8 @@ void main() {
                 shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
                 longBreakDuration: TimerDuration(minutes: 0, seconds: 1),
                 numberOfCompletedPomodorosRequiredForLongBreak: 4
-            )
+            ),
+            notification: MockNotification()
         );
     //When
     pomodoroTimer.toggle();
@@ -101,7 +104,8 @@ void main() {
                 shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
                 longBreakDuration: TimerDuration(minutes: 0, seconds: 1),
                 numberOfCompletedPomodorosRequiredForLongBreak: 4
-            )
+            ),
+            notification: MockNotification()
         );
     //When
     pomodoroTimer.toggle();
@@ -120,7 +124,8 @@ void main() {
             shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
             longBreakDuration: TimerDuration(minutes: 0, seconds: 10),
             numberOfCompletedPomodorosRequiredForLongBreak: 3
-        )
+        ),
+        notification: MockNotification()
     );
     //When
     pomodoroTimer.toggle();
@@ -139,4 +144,16 @@ void main() {
         ]
     ));
   });
+
+  test("Verify call to show notification on new activity start", () {
+
+  });
+
+  test("Verify call to update notification each second", () {
+
+  });
+}
+
+class MockNotification extends Mock implements TimerNotification {
+
 }
