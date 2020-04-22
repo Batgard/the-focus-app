@@ -1,14 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 import 'TimerScreenView.dart';
 
 class TimerScreenViewModel extends State<TimerScreenView> {
   static const String routeId = "TimerScreen";
 
   final TimeFormatter _timeFormatter = TimeFormatter();
+  final methodChannel = MethodChannel("fr.batgard.thefocusapp.notificationChannel");
+
   PomodoroTimer timer;
 
   @override
@@ -20,6 +24,12 @@ class TimerScreenViewModel extends State<TimerScreenView> {
       setState(() {
       });
     });
+  }
+
+  @override
+  void dispose() {
+    timer.dispose();
+    super.dispose();
   }
 
   @override
@@ -110,6 +120,11 @@ class PomodoroTimer {
     });
   }
 
+  void dispose() {
+    _streamController.close();
+    _currentStatusStreamController.close();
+  }
+
   void _startPomodoro() {
     _value.reset(duration: configuration.pomodoroDuration);
     _startTimer();
@@ -128,6 +143,8 @@ class PomodoroTimer {
   void _pause() {
     _running = false;
     _timer.cancel();
+    final activity = Activity(_activityType, _value.asDuration());
+    notification.updateExistingNotificationActivityPaused(activity);
   }
 
   void _restart() {
@@ -291,6 +308,41 @@ class TimerNotification {
     var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
     platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+  }
+
+  void updateExistingNotificationActivityPaused(Activity activity) async {
+    NotificationContent content;
+
+    switch(activity.type) {
+      case ActivityType.pomodoro: {
+        content = NotificationContent(
+            "Pomodoro - Paused",
+            "Time left: ${formatter.formatValue(activity.duration)}",
+            TimerScreenViewModel.routeId);
+        break;
+      }
+      case ActivityType.shortBreak: {
+        content = NotificationContent(
+            "Break - Paused",
+            "Time left: ${formatter.formatValue(activity.duration)}",
+            TimerScreenViewModel.routeId);
+        break;
+      }
+      case ActivityType.longBreak: {
+        content = NotificationContent(
+            "Break - Paused",
+            "Time left: ${formatter.formatValue(activity.duration)}",
+            TimerScreenViewModel.routeId);
+        break;
+      }
+    }
+
+    await flutterLocalNotificationsPlugin.show(
+        notificationId,
+        content.title,
+        content.body,
+        platformChannelSpecifics,
+        payload: content.payload);
   }
 
   void updateExistingNotification(Activity activity) async {

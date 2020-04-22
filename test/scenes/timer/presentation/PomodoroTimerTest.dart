@@ -145,14 +145,76 @@ void main() {
     ));
   });
 
-  test("Verify call to show notification on new activity start", () {
-
+  test("Verify call once to show notification on new activity start", () {
+    //Given
+    var mockNotification = MockNotification();
+    var pomodoroTimer =
+    PomodoroTimer(
+        configuration: TimerConfiguration(
+            pomodoroDuration: TimerDuration(minutes: 0, seconds: 1),
+            shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
+            longBreakDuration: TimerDuration(minutes: 0, seconds: 1),
+            numberOfCompletedPomodorosRequiredForLongBreak: 4
+        ),
+        notification: mockNotification
+    );
+    //When
+    pomodoroTimer.toggle();
+    //Then
+    pomodoroTimer.timerTypeChanges().listen(expectAsync1((activity) {
+      verify(mockNotification.showNewActivityStartNotification(argThat(anything))).called(1);
+    }, count: 2, max: 2)
+    );
   });
 
-  test("Verify call to update notification each second", () {
+  test("Verify call to update notification", () {
+    //Given
+    var mockNotification = MockNotification();
+    var pomodoroTimer =
+    PomodoroTimer(
+        configuration: TimerConfiguration(
+            pomodoroDuration: TimerDuration(minutes: 0, seconds: 3),
+            shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
+            longBreakDuration: TimerDuration(minutes: 0, seconds: 1),
+            numberOfCompletedPomodorosRequiredForLongBreak: 4
+        ),
+        notification: mockNotification
+    );
+    //When
+    pomodoroTimer.toggle();
+    //Then
+    pomodoroTimer.displayableValue().listen(expectAsync1((activity) {
+      verify(mockNotification.updateExistingNotification(argThat(anything))).called(1);
+    }, count: 2, max: 2)
+    );
+  });
 
+  test("Verify call to pause notification", () {
+
+    //Given
+    var mockNotification = MockNotification();
+    var pomodoroTimer =
+    PomodoroTimer(
+        configuration: TimerConfiguration(
+            pomodoroDuration: TimerDuration(minutes: 0, seconds: 3),
+            shortBreakDuration: TimerDuration(minutes: 0,seconds: 1),
+            longBreakDuration: TimerDuration(minutes: 0, seconds: 1),
+            numberOfCompletedPomodorosRequiredForLongBreak: 4
+        ),
+        notification: mockNotification
+    );
+    //When
+    pomodoroTimer.toggle();
+    pomodoroTimer.toggle();
+    //Then
+    verify(
+        mockNotification.updateExistingNotificationActivityPaused(
+            argThat(anything)
+        )
+    ).called(1);
   });
 }
+
 
 class MockNotification extends Mock implements TimerNotification {
 
