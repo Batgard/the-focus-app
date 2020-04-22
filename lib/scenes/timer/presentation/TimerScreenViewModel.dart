@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -99,7 +100,7 @@ class PomodoroTimer {
 
   PomodoroTimer({this.configuration, this.formatter, this.notification}) {
     if (configuration == null) {
-      configuration = TimerConfiguration.setUpWithDefaults();
+      configuration = TimerConfiguration.debug();
     }
     if (formatter == null) {
       formatter = TimeFormatter();
@@ -116,7 +117,9 @@ class PomodoroTimer {
       }
       _value.decrementOneSecond();
       _streamController.sink.add(formatter.formatValue(_value.asDuration()));
-      notification.updateExistingNotification(getCurrentActivity());
+      if (Platform.isAndroid) {
+        notification.updateExistingNotification(getCurrentActivity());
+      }
     });
   }
 
