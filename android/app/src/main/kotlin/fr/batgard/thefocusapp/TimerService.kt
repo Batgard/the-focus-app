@@ -2,19 +2,23 @@ package fr.batgard.thefocusapp
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
-import android.content.ComponentName
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
+import android.content.IntentFilter
 import android.os.Binder
 import android.os.Build
-import android.os.CountDownTimer
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerImpl
+import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerInfo
+import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewModel
+import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewModelImpl
 
 interface TimerNotification {
-    fun setupConfiguration(timerDetails: TimerDetails)
-    fun updateContent(content: NotificationContent)
+    fun setupConfiguration(timerInfo: TimerInfo)
 }
 
 interface NotificationContent {
@@ -25,11 +29,17 @@ interface NotificationContent {
 }
 
 class TimerService: Service(), TimerNotification {
-    
+
+    companion object {
+        const val BROADCAST_ACTION = "fr.batgard.thefocusapp.PLAY_PAUSE_ACTION"
+    }
+
+    private var viewModel: TimerNotificationViewModel? = null
+
     var notificationManager: NotificationManager? = null
     private val notificationBuilder = NotificationCompat.Builder(this, getString(R.string.notification_channel_id))
 
-    inner class TimerServiceBinder: Binder() {
+    inner class TimerServiceBinder : Binder() {
         fun getRef(): TimerNotification {
             return this@TimerService
         }
@@ -37,12 +47,11 @@ class TimerService: Service(), TimerNotification {
 
     private val binder = TimerServiceBinder()
 
-    private var configuration: TimerDetails? = null
-
     private lateinit var notification: Notification
 
     override fun onCreate() {
         super.onCreate()
+        registerBroadcastReceiver()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             notificationManager = getSystemService(NotificationManager::class.java)
         }
@@ -55,28 +64,33 @@ class TimerService: Service(), TimerNotification {
     }
 
 
-    //region timerNotification
-    override fun updateContent(content: NotificationContent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            notificationManager?.notify(1, makeNotification(content))
-        } else {
-            //FIXME: Find way for prior versions of Android to send notification
-        }
-    }
+    //region timerInfo
 
-    override fun setupConfiguration(timerDetails: TimerDetails) {
-        configuration = timerDetails
+    override fun setupConfiguration(timerInfo: TimerInfo) {
+        viewModel = TimerNotificationViewModelImpl(TimerImpl(timerInfo))
         startForegroundWithNotification()
     }
 
-    //endregion timerNotification
+    //endregion timerInfo
 
+    private fun registerBroadcastReceiver() {
+        registerReceiver(MyBroadcastReceiver(::onPlayPauseAction), IntentFilter(BROADCAST_ACTION))
+    }
+
+    private fun onPlayPauseAction() {
+        viewModel?.onPlayPauseButtonTap()
+    }
 
     private fun startForegroundWithNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationBuilder = NotificationCompat.Builder(this, getString(R.string.notification_channel_id))
-            notificationBuilder.setContentText("Time remaining: ").setContentTitle("Timer type:")
+            notificationBuilder
+                    .setContentText(viewModel?.getTitle())
+                    .setContentTitle(viewModel?.getBody())
                     .setSmallIcon(R.drawable.ic_tomato_timer)
+                    .addAction(NotificationCompat.Action(null, viewModel?.getButtonLabel(),
+                            playPauseButtonPendingIntent
+                            ))
             notification = notificationBuilder.build()
             startForeground(1, notification)
         } else {
@@ -85,22 +99,23 @@ class TimerService: Service(), TimerNotification {
         }
     }
 
-    private fun startCountDown() {
-        val countDown =  object: CountDownTimer(0, 1000) {
-            override fun onFinish() {
-                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-            }
-
-            override fun onTick(millisUntilFinished: Long) {
-                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-            }
-        }
+    private val actionIntent = Intent(this, MyBroadcastReceiver::class.java).apply {
+        action = BROADCAST_ACTION
     }
+
+    private val playPauseButtonPendingIntent: PendingIntent =
+            PendingIntent.getBroadcast(this, 0, actionIntent, 0)
 
     private fun makeNotification(content: NotificationContent): Notification {
         return notificationBuilder.setContentText(content.getBody())
                 .setContentTitle(content.getTitle())
                 .setSmallIcon(R.drawable.ic_tomato_timer)
                 .build()
+    }
+}
+
+class MyBroadcastReceiver(private val actionListener: () -> Unit): BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        actionListener.invoke()
     }
 }

@@ -164,6 +164,39 @@ class PomodoroTimer {
     _value = TimerValue(duration: configuration.pomodoroDuration);
   }
 
+  void toggle() {
+    if (_running) {
+      _pause();
+    } else {
+      _resume();
+    }
+  }
+
+  bool isRunning() => _running;
+
+  MaterialColor color() {
+    return _activityType == ActivityType.pomodoro ? Colors.blueGrey: Colors.green;
+  }
+
+  Stream<String> displayableValue() {
+    return _streamController.stream;
+  }
+
+  Stream<Activity> timerTypeChanges() => _currentStatusStreamController.stream;
+
+  String getInitialValue() => formatter.formatValue(_value.asDuration());
+
+  Activity getCurrentActivity() {
+    return Activity(_activityType, _value.asDuration());
+  }
+
+  int getCompletedPomodoroCount() => _completedPomodorosCount;
+
+  void dispose() {
+    _streamController.close();
+    _currentStatusStreamController.close();
+  }
+
   void _startTimer() {
     _running = true;
     _timer = Timer.periodic(Duration(seconds: 1), (t) {
@@ -175,11 +208,6 @@ class PomodoroTimer {
       _streamController.sink.add(formatter.formatValue(_value.asDuration()));
       notification.updateExistingNotification(getCurrentActivity());
     });
-  }
-
-  void dispose() {
-    _streamController.close();
-    _currentStatusStreamController.close();
   }
 
   void _startPomodoro() {
@@ -230,34 +258,6 @@ class PomodoroTimer {
 
   void _resume() {
     _startTimer();
-  }
-
-  int getCompletedPomodoroCount() => _completedPomodorosCount;
-
-  void toggle() {
-    if (_running) {
-      _pause();
-    } else {
-      _resume();
-    }
-  }
-
-  bool isRunning() => _running;
-
-  MaterialColor color() {
-    return _activityType == ActivityType.pomodoro ? Colors.blueGrey: Colors.green;
-  }
-
-  Stream<String> displayableValue() {
-    return _streamController.stream;
-  }
-
-  Stream<Activity> timerTypeChanges() => _currentStatusStreamController.stream;
-
-  String getInitialValue() => formatter.formatValue(_value.asDuration());
-
-  Activity getCurrentActivity() {
-    return Activity(_activityType, _value.asDuration());
   }
 }
 
