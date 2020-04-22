@@ -7,7 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'TimerScreenView.dart';
 
-class TimerScreenViewModel extends State<TimerScreenView> {
+class TimerScreenViewModel extends State<TimerScreenView> with WidgetsBindingObserver {
   static const String routeId = "TimerScreen";
 
   final TimeFormatter _timeFormatter = TimeFormatter();
@@ -24,11 +24,13 @@ class TimerScreenViewModel extends State<TimerScreenView> {
       setState(() {
       });
     });
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     timer.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -80,6 +82,61 @@ class TimerScreenViewModel extends State<TimerScreenView> {
     }
     return Text(completedPomodoros);
   }
+
+  /// WidgetsBindingObserver region
+  /// Only call this method if the app is backgrounded and the timer is running
+    void startTimerNotification() {
+        final Activity activity = timer.getCurrentActivity();
+        final pomodoroDuration = timer.configuration.pomodoroDuration;
+        final shortBreakDuration = timer.configuration.shortBreakDuration;
+        final longBreakDuration = timer.configuration.longBreakDuration;
+        final longBreakFrequency = timer.configuration.numberOfCompletedPomodorosRequiredForLongBreak;
+        var currentActivity = "";
+        var remainingTime = "";
+
+        if (activity != null) {
+          switch(activity.type) {
+            case ActivityType.pomodoro:
+              currentActivity = "Pomodoro";
+              break;
+            case ActivityType.shortBreak:
+            case ActivityType.longBreak:
+              currentActivity = "Break!";
+              break;
+          }
+          remainingTime = timer.formatter.formatValue(activity.duration);
+        }
+        methodChannel.invokeMethod("startTimerNotification",
+            [
+              currentActivity,
+              remainingTime,
+              pomodoroDuration,
+              shortBreakDuration,
+              longBreakDuration,
+              longBreakFrequency
+            ] //FIXME: Use json format for data
+        );
+      }
+
+    void stopTimerNotification() {
+      methodChannel.invokeMethod("stopTimerNotification");
+    }
+
+    @override
+    void didChangeAppLifecycleState(AppLifecycleState state) {
+      switch(state) {
+        case AppLifecycleState.resumed:
+            stopTimerNotification();
+            break;
+          case AppLifecycleState.paused:
+            startTimerNotification();
+            break;
+          default: break;
+        }
+      }
+
+  /// WidgetsBindingObserver region end
+
 }
 
 class PomodoroTimer {
