@@ -1,0 +1,16 @@
+{
+  "currentActivity": {
+    "type": "pomodoro",
+    "running": true,
+    "remainingTime": {
+      "minutes": 4,
+      "seconds": 30
+    }
+  },
+  "configuration": {
+    "pomodoroDurationInMin": 25,
+    "shortBreakDurationInMin": 5,
+    "longBreakDurationInMin": 15,
+    "longBreakFrequency": 4
+  }
+}

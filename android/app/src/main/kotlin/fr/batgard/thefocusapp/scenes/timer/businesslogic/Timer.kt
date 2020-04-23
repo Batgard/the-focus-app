@@ -5,10 +5,9 @@ import android.os.CountDownTimer
 interface Timer {
     fun toggle()
     fun getPomodoroDuration(): Duration
-    fun setRemainingTimeListener(listener: (remainingTime: Duration) -> Unit)
+    fun getCurrentActivity(): Activity
     fun isRunning(): Boolean
-    fun resetWithDuration(durationInMin: Int)
-    fun onActivityChange(listener: (newActivity: ActivityType) -> Unit)
+    fun onActivityChange(listener: (newActivity: Activity) -> Unit)
 }
 
 class TimerImpl(private val initialTimerInfo: TimerInfo): Timer {
@@ -17,6 +16,7 @@ class TimerImpl(private val initialTimerInfo: TimerInfo): Timer {
     private var completedPomodoroCount = 0
     private var countDown: CountDownTimer? = null
     private var running: Boolean = false
+    private var listener: ((newActivity: Activity) -> Unit)? = null
 
     override fun toggle() {
         if (isRunning()) {
@@ -26,25 +26,15 @@ class TimerImpl(private val initialTimerInfo: TimerInfo): Timer {
         }
         running = !running
     }
+    
+    override fun getPomodoroDuration(): Duration = currentActivity.remainingTime
 
-    override fun getPomodoroDuration(): Duration {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun getCurrentActivity(): Activity = currentActivity
 
-    override fun setRemainingTimeListener(listener: (remainingTime: Duration) -> Unit) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun isRunning(): Boolean = currentActivity.running
 
-    override fun isRunning(): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun resetWithDuration(durationInMin: Int) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun onActivityChange(listener: (newActivity: ActivityType) -> Unit) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun onActivityChange(listener: (newActivity: Activity) -> Unit) {
+        this.listener = listener
     }
 
     private fun startCountDown(duration: Duration) {
@@ -52,10 +42,12 @@ class TimerImpl(private val initialTimerInfo: TimerInfo): Timer {
             override fun onFinish() {
                 currentActivity = getNextActivity()
                 startCountDown(currentActivity.remainingTime)
+                listener?.invoke(currentActivity)
             }
 
             override fun onTick(millisUntilFinished: Long) {
                 currentActivity.remainingTime.decrementOneSecond()
+                listener?.invoke(currentActivity)
             }
         }
         countDown?.start()

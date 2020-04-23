@@ -1,64 +1,67 @@
 package fr.batgard.thefocusapp.scenes.timer.presentation
 
+import fr.batgard.thefocusapp.scenes.timer.businesslogic.Activity
+import fr.batgard.thefocusapp.scenes.timer.businesslogic.ActivityType
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.Duration
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.Timer
 
-interface TimerNotificationViewModel{
+interface TimerNotificationViewModel {
     fun getTitle(): String
     fun getBody(): String
-    fun getButtonLabel(): String
-    fun setTitleChangeListener(listener: (String) -> Unit)
-    fun setBodyChangeListener(listener: (String) -> Unit)
-    fun setPlayPauseButtonStateChangeListener(listener:(buttonState: ButtonState) -> Unit)
+    fun getButtonLabel(): ButtonState
+    fun setNotificationChangeListener(listener: (content: NotificationContent) -> Unit)
     fun onPlayPauseButtonTap()
 }
 
-class TimerNotificationViewModelImpl(private val pomodoroTimer: Timer): TimerNotificationViewModel {
+class TimerNotificationViewModelImpl(private val pomodoroTimer: Timer) : TimerNotificationViewModel {
 
-    private var _titleChangeListener: ((String) -> Unit)? = null
-    private var _bodyChangeListener: ((String) -> Unit)? = null
-    private var _playPauseButtonStateChangeListener: ((buttonState: ButtonState) -> Unit)? = null
-    private var currentActivityRemainingTime: Duration = pomodoroTimer.getPomodoroDuration()
+    private var notificationContentListener: ((content: NotificationContent) -> Unit)? = null
 
     init {
-        pomodoroTimer.setRemainingTimeListener {duration ->
-            currentActivityRemainingTime = duration
-            _titleChangeListener?.let { listener ->
-                listener(formatRemainingTime(currentActivityRemainingTime))
-            }
+        pomodoroTimer.onActivityChange {
+            notificationContentListener?.invoke(
+                    NotificationContent(
+                            title = formatTitle(it),
+                            body = formatBody(it),
+                            buttonState = getButtonLabel()
+                    )
+            )
         }
     }
 
-    override fun setTitleChangeListener(listener: (String) -> Unit) {
-        _titleChangeListener = listener
-    }
-
-    override fun setBodyChangeListener(listener: (String) -> Unit) {
-        _bodyChangeListener = listener
-    }
-
-    override fun setPlayPauseButtonStateChangeListener(listener: (buttonState: ButtonState) -> Unit) {
-        _playPauseButtonStateChangeListener = listener
+    override fun setNotificationChangeListener(listener: (content: NotificationContent) -> Unit) {
+        notificationContentListener = listener
     }
 
     override fun onPlayPauseButtonTap() {
         pomodoroTimer.toggle()
-        //TODO: Update button
     }
 
-    override fun getTitle(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun getTitle(): String = formatTitle(pomodoroTimer.getCurrentActivity())
 
-    override fun getBody(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun getBody(): String = formatBody(pomodoroTimer.getCurrentActivity())
 
-    override fun getButtonLabel(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun getButtonLabel(): ButtonState = getButtonLabel()
 
     private fun formatRemainingTime(duration: Duration): String {
         return "${duration.minutes}:${duration.seconds}"
+    }
+
+    private fun formatTitle(activity: Activity): String {
+        val title = StringBuilder(when (activity.type) {
+            ActivityType.POMODORO ->
+                ActivityType.POMODORO.name
+            ActivityType.SHORT_BREAK ->
+                ActivityType.SHORT_BREAK.name
+            ActivityType.LONG_BREAK -> ActivityType.LONG_BREAK.name
+        })
+
+        title.append(if (activity.running) "- on going" else "- paused")
+
+        return title.toString()
+    }
+
+    private fun formatBody(activity: Activity): String {
+        return formatRemainingTime(activity.remainingTime)
     }
 }

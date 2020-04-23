@@ -21,14 +21,7 @@ interface TimerNotification {
     fun setupConfiguration(timerInfo: TimerInfo)
 }
 
-interface NotificationContent {
-    fun getTitle(): String
-    fun getBody(): String
-    fun setTitle(title: String)
-    fun setBody(body: String)
-}
-
-class TimerService: Service(), TimerNotification {
+class TimerService : Service(), TimerNotification {
 
     companion object {
         const val BROADCAST_ACTION = "fr.batgard.thefocusapp.PLAY_PAUSE_ACTION"
@@ -88,9 +81,12 @@ class TimerService: Service(), TimerNotification {
                     .setContentText(viewModel?.getTitle())
                     .setContentTitle(viewModel?.getBody())
                     .setSmallIcon(R.drawable.ic_tomato_timer)
-                    .addAction(NotificationCompat.Action(null, viewModel?.getButtonLabel(),
-                            playPauseButtonPendingIntent
-                            ))
+                    .addAction(
+                            NotificationCompat.Action(null,
+                                    viewModel?.getButtonLabel()?.name,
+                                    playPauseButtonPendingIntent
+                            )
+                    )
             notification = notificationBuilder.build()
             startForeground(1, notification)
         } else {
@@ -105,16 +101,9 @@ class TimerService: Service(), TimerNotification {
 
     private val playPauseButtonPendingIntent: PendingIntent =
             PendingIntent.getBroadcast(this, 0, actionIntent, 0)
-
-    private fun makeNotification(content: NotificationContent): Notification {
-        return notificationBuilder.setContentText(content.getBody())
-                .setContentTitle(content.getTitle())
-                .setSmallIcon(R.drawable.ic_tomato_timer)
-                .build()
-    }
 }
 
-class MyBroadcastReceiver(private val actionListener: () -> Unit): BroadcastReceiver() {
+class MyBroadcastReceiver(private val actionListener: () -> Unit) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         actionListener.invoke()
     }

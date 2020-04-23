@@ -1,5 +1,8 @@
 package fr.batgard.thefocusapp.scenes.timer.businesslogic
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Duration(var minutes: Int, var seconds: Int = 0) {
     fun asMillis(): Long {
         return minutes.toLong()* 60 * 1000 + seconds * 1000

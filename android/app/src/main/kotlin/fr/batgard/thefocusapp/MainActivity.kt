@@ -8,14 +8,19 @@ import android.os.Bundle
 import android.os.IBinder
 import android.os.PersistableBundle
 import androidx.annotation.NonNull
+import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerInfo
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugins.GeneratedPluginRegistrant
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonConfiguration
 
 class MainActivity: FlutterActivity() {
 
     private var timerNotification: TimerNotification? = null
+    private var initialTimerInfo: TimerInfo? = null
+    private val json = Json(JsonConfiguration.Stable)
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         GeneratedPluginRegistrant.registerWith(flutterEngine)
@@ -28,7 +33,7 @@ class MainActivity: FlutterActivity() {
                 .setMethodCallHandler { methodCall, _ ->
             when(methodCall.method) {
                 "startTimerNotification" -> {
-                    startService()
+                    startService(methodCall.argument<String>("timerInfo"))
                 }
                 "stopTimerNotification" -> {
                     stopService()
@@ -37,7 +42,12 @@ class MainActivity: FlutterActivity() {
         }
     }
 
-    private fun startService() {
+    private fun startService(rawTimerInfo: String?) {
+
+        require(rawTimerInfo != null)
+
+        initialTimerInfo = json.parse(TimerInfo.serializer(), rawTimerInfo)
+
         val intent = Intent(context, TimerService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
@@ -58,7 +68,9 @@ class MainActivity: FlutterActivity() {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             val binder = service as TimerService.TimerServiceBinder
             timerNotification = binder.getRef()
-            timerNotification.updateContent(NotificationContent())
+            initialTimerInfo?.let {
+                timerNotification?.setupConfiguration(it)
+            }
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
