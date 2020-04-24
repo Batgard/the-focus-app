@@ -41,7 +41,9 @@ class TimerNotificationViewModelImpl(private val pomodoroTimer: Timer) : TimerNo
 
     override fun getBody(): String = formatBody(pomodoroTimer.getCurrentActivity())
 
-    override fun getButtonLabel(): ButtonState = getButtonLabel()
+    override fun getButtonLabel(): ButtonState {
+      return if(pomodoroTimer.isRunning()) ButtonState.PLAYING else {ButtonState.PAUSED}
+    }
 
     private fun formatRemainingTime(duration: Duration): String {
         return "${duration.minutes}:${duration.seconds}"

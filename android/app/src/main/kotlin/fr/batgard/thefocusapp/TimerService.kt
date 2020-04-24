@@ -14,6 +14,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerImpl
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerInfo
+import fr.batgard.thefocusapp.scenes.timer.presentation.NotificationContent
 import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewModel
 import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewModelImpl
 
@@ -25,12 +26,13 @@ class TimerService : Service(), TimerNotification {
 
     companion object {
         const val BROADCAST_ACTION = "fr.batgard.thefocusapp.PLAY_PAUSE_ACTION"
+        const val NOTIFICATION_ID = 1
     }
 
     private var viewModel: TimerNotificationViewModel? = null
+    private var serviceNotificationActionBroadcastReceiver: MyBroadcastReceiver? = null
 
     var notificationManager: NotificationManager? = null
-    private val notificationBuilder = NotificationCompat.Builder(this, getString(R.string.notification_channel_id))
 
     inner class TimerServiceBinder : Binder() {
         fun getRef(): TimerNotification {
@@ -40,7 +42,7 @@ class TimerService : Service(), TimerNotification {
 
     private val binder = TimerServiceBinder()
 
-    private lateinit var notification: Notification
+    private lateinit var playPauseButtonPendingIntent: PendingIntent
 
     override fun onCreate() {
         super.onCreate()
@@ -56,18 +58,30 @@ class TimerService : Service(), TimerNotification {
         return binder
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        unregisterBroadcastReceiver()
+        return super.onUnbind(intent)
+    }
 
-    //region timerInfo
+//region timerInfo
 
     override fun setupConfiguration(timerInfo: TimerInfo) {
         viewModel = TimerNotificationViewModelImpl(TimerImpl(timerInfo))
+        viewModel?.setNotificationChangeListener {
+            updateNotification(it)
+        }
         startForegroundWithNotification()
     }
 
     //endregion timerInfo
 
     private fun registerBroadcastReceiver() {
-        registerReceiver(MyBroadcastReceiver(::onPlayPauseAction), IntentFilter(BROADCAST_ACTION))
+        serviceNotificationActionBroadcastReceiver = MyBroadcastReceiver(::onPlayPauseAction)
+        registerReceiver(serviceNotificationActionBroadcastReceiver, IntentFilter(BROADCAST_ACTION))
+    }
+
+    private fun unregisterBroadcastReceiver() {
+        unregisterReceiver(serviceNotificationActionBroadcastReceiver)
     }
 
     private fun onPlayPauseAction() {
@@ -75,32 +89,38 @@ class TimerService : Service(), TimerNotification {
     }
 
     private fun startForegroundWithNotification() {
+        val actionIntent = Intent().apply {
+            action = BROADCAST_ACTION
+        }
+
+        playPauseButtonPendingIntent =
+                PendingIntent.getBroadcast(this, 0, actionIntent, 0)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationBuilder = NotificationCompat.Builder(this, getString(R.string.notification_channel_id))
-            notificationBuilder
-                    .setContentText(viewModel?.getTitle())
-                    .setContentTitle(viewModel?.getBody())
-                    .setSmallIcon(R.drawable.ic_tomato_timer)
-                    .addAction(
-                            NotificationCompat.Action(null,
-                                    viewModel?.getButtonLabel()?.name,
-                                    playPauseButtonPendingIntent
-                            )
-                    )
-            notification = notificationBuilder.build()
-            startForeground(1, notification)
+            startForeground(NOTIFICATION_ID, getNotification())
         } else {
 //            content = NotificationContent()
 //            updateContent()
         }
     }
 
-    private val actionIntent = Intent(this, MyBroadcastReceiver::class.java).apply {
-        action = BROADCAST_ACTION
+    private fun updateNotification(content: NotificationContent) {
+        val notification = getNotification()
+        notificationManager?.notify(NOTIFICATION_ID, notification)
     }
 
-    private val playPauseButtonPendingIntent: PendingIntent =
-            PendingIntent.getBroadcast(this, 0, actionIntent, 0)
+    private fun getNotification(): Notification? {
+        return NotificationCompat.Builder(this, getString(R.string.notification_channel_id))
+                .setContentText(viewModel?.getTitle())
+                .setContentTitle(viewModel?.getBody())
+                .setSmallIcon(R.drawable.ic_tomato_timer)
+                .addAction(
+                        NotificationCompat.Action(null,
+                                viewModel?.getButtonLabel()?.name,
+                                playPauseButtonPendingIntent
+                        )
+                ).build()
+    }
 }
 
 class MyBroadcastReceiver(private val actionListener: () -> Unit) : BroadcastReceiver() {

@@ -15,16 +15,22 @@ class TimerImpl(private val initialTimerInfo: TimerInfo): Timer {
     private var currentActivity: Activity = initialTimerInfo.currentActivity
     private var completedPomodoroCount = 0
     private var countDown: CountDownTimer? = null
-    private var running: Boolean = false
     private var listener: ((newActivity: Activity) -> Unit)? = null
 
+    init {
+        if (currentActivity.running) {
+            startCountDown(currentActivity.remainingTime)
+        }
+    }
+    
     override fun toggle() {
         if (isRunning()) {
             countDown?.cancel()
         } else {
             startCountDown(currentActivity.remainingTime)
         }
-        running = !running
+        currentActivity = currentActivity.getNewToggledActivity()
+        listener?.invoke(currentActivity)
     }
     
     override fun getPomodoroDuration(): Duration = currentActivity.remainingTime

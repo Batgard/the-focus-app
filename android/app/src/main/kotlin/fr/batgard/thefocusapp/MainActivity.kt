@@ -1,9 +1,9 @@
 package fr.batgard.thefocusapp
 
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PersistableBundle
@@ -16,6 +16,7 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 
+
 class MainActivity: FlutterActivity() {
 
     private var timerNotification: TimerNotification? = null
@@ -24,22 +25,17 @@ class MainActivity: FlutterActivity() {
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         GeneratedPluginRegistrant.registerWith(flutterEngine)
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
-        super.onCreate(savedInstanceState, persistentState)
-
-        MethodChannel(flutterEngine?.dartExecutor?.binaryMessenger, "fr.batgard.thefocusapp.notificationChannel")
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "fr.batgard.thefocusapp.notificationChannel")
                 .setMethodCallHandler { methodCall, _ ->
-            when(methodCall.method) {
-                "startTimerNotification" -> {
-                    startService(methodCall.argument<String>("timerInfo"))
+                    when(methodCall.method) {
+                        "startTimerNotification" -> {
+                            startService(methodCall.arguments.toString())
+                        }
+                        "stopTimerNotification" -> {
+                            stopService()
+                        }
+                    }
                 }
-                "stopTimerNotification" -> {
-                    stopService()
-                }
-            }
-        }
     }
 
     private fun startService(rawTimerInfo: String?) {
@@ -49,16 +45,15 @@ class MainActivity: FlutterActivity() {
         initialTimerInfo = json.parse(TimerInfo.serializer(), rawTimerInfo)
 
         val intent = Intent(context, TimerService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
+//        ContextCompat.startForegroundService(this, intent)
+
+        bindService(intent,
+                connection,
+                Context.BIND_AUTO_CREATE)
     }
 
     private fun stopService() {
-        val intent = Intent(context, TimerService::class.java)
-        stopService(intent)
+        unbindService(connection)
     }
 
     /** Defines callbacks for service binding, passed to bindService()  */
@@ -74,7 +69,6 @@ class MainActivity: FlutterActivity() {
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
-
         }
     }
 }

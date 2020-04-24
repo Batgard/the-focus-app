@@ -1,9 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:thefocusapp/scenes/timer/data/ActivityType.dart';
+import 'package:thefocusapp/scenes/timer/data/TimerDuration.dart';
+import 'package:thefocusapp/scenes/timer/framework/Activity.dart';
+import 'package:thefocusapp/scenes/timer/framework/Configuration.dart';
+import 'package:thefocusapp/scenes/timer/framework/timerinfo.dart';
 
 import 'TimerScreenView.dart';
 
@@ -85,14 +91,14 @@ class TimerScreenViewModel extends State<TimerScreenView> with WidgetsBindingObs
 
   /// WidgetsBindingObserver region
   /// Only call this method if the app is backgrounded and the timer is running
-    void startTimerNotification() {
+    void startTimerNotification() async {
         final Activity activity = timer.getCurrentActivity();
-        final pomodoroDuration = timer.configuration.pomodoroDuration;
-        final shortBreakDuration = timer.configuration.shortBreakDuration;
-        final longBreakDuration = timer.configuration.longBreakDuration;
+        final pomodoroDuration = timer.configuration.pomodoroDuration.minutes;
+        final shortBreakDuration = timer.configuration.shortBreakDuration.minutes;
+        final longBreakDuration = timer.configuration.longBreakDuration.minutes;
         final longBreakFrequency = timer.configuration.numberOfCompletedPomodorosRequiredForLongBreak;
         var currentActivity = "";
-        var remainingTime = "";
+        TimerDuration remainingTime;
 
         if (activity != null) {
           switch(activity.type) {
@@ -104,23 +110,32 @@ class TimerScreenViewModel extends State<TimerScreenView> with WidgetsBindingObs
               currentActivity = "Break!";
               break;
           }
-          remainingTime = timer.formatter.formatValue(activity.duration);
+          remainingTime = activity.duration;
         }
-        methodChannel.invokeMethod("startTimerNotification",
-            [
-              currentActivity,
-              remainingTime,
-              pomodoroDuration,
-              shortBreakDuration,
-              longBreakDuration,
-              longBreakFrequency
-            ] //FIXME: Use json format for data
+
+        final timerInfo = TimerInfo(
+            CurrentActivity(_getActivityTypeJsonValue(activity.type),
+                timer.isRunning(),
+                activity.duration),
+            Configuration(pomodoroDuration, shortBreakDuration, longBreakDuration, longBreakFrequency)
+        );
+
+        final argument = jsonEncode(timerInfo);
+
+        await methodChannel.invokeMethod("startTimerNotification",
+            argument
         );
       }
 
-    void stopTimerNotification() {
-      methodChannel.invokeMethod("stopTimerNotification");
+    void stopTimerNotification() async {
+      await methodChannel.invokeMethod("stopTimerNotification");
     }
+
+  /// Just an ugly hack to make up for the lack of methods in enums.
+  /// Note that, by default, an enum's toString() returns NameOfTheEnum.theEnumValue
+  String _getActivityTypeJsonValue(ActivityType type) {
+    return type.toString().split(".")[1];
+  }
 
     @override
     void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -296,14 +311,6 @@ class TimerValue {
   bool isComplete() => _seconds == 0 && _minutes == 0;
 
   TimerDuration asDuration() => TimerDuration(minutes: _minutes, seconds: _seconds);
-}
-
-class TimerDuration {
-  final int minutes;
-  final int seconds;
-
-  TimerDuration({this.minutes, this.seconds});
-
 }
 
 class TimerConfiguration {
@@ -491,12 +498,6 @@ class NotificationContent {
   final String payload;
 
   NotificationContent(this.title, this.body, this.payload);
-}
-
-enum ActivityType {
-  pomodoro,
-  shortBreak,
-  longBreak
 }
 
 class Activity {

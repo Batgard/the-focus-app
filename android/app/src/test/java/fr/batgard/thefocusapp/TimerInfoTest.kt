@@ -58,4 +58,11 @@ class TimerInfoTest {
         val timerInfo = Json.parse(TimerInfo.serializer(), stringJson)
         assertEquals(timerInfo.configuration.longBreakFrequency, 4)
     }
+
+    @Test
+    fun `Decrement method isn't updating the actual instance`() {
+        val i = 12
+        i.dec()
+        assertEquals(12, i)
+    }
 }

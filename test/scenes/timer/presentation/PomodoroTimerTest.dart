@@ -1,5 +1,7 @@
 import 'package:test/test.dart';
 import 'package:mockito/mockito.dart';
+import 'package:thefocusapp/scenes/timer/data/ActivityType.dart';
+import 'package:thefocusapp/scenes/timer/data/TimerDuration.dart';
 import 'package:thefocusapp/scenes/timer/presentation/TimerScreenViewModel.dart';
 
 void main() {
