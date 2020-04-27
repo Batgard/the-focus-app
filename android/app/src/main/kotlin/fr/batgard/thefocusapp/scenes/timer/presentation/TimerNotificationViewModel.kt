@@ -46,7 +46,7 @@ class TimerNotificationViewModelImpl(private val pomodoroTimer: Timer) : TimerNo
     }
 
     private fun formatRemainingTime(duration: Duration): String {
-        return "${duration.minutes}:${duration.seconds}"
+        return "${duration.minutes}:${duration.seconds.toString().padStart(2, '0')}"
     }
 
     private fun formatTitle(activity: Activity): String {

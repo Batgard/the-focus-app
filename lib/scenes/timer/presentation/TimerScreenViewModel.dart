@@ -221,7 +221,6 @@ class PomodoroTimer {
       }
       _value.decrementOneSecond();
       _streamController.sink.add(formatter.formatValue(_value.asDuration()));
-      notification.updateExistingNotification(getCurrentActivity());
     });
   }
 
@@ -243,8 +242,6 @@ class PomodoroTimer {
   void _pause() {
     _running = false;
     _timer.cancel();
-    final activity = Activity(_activityType, _value.asDuration());
-    notification.updateExistingNotificationActivityPaused(activity);
   }
 
   void _restart() {

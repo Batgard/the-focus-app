@@ -1,4 +1,4 @@
-package fr.batgard.thefocusapp
+package fr.batgard.thefocusapp.scenes.timer.framework
 
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.ActivityType
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerInfo
@@ -60,7 +60,7 @@ class TimerInfoTest {
     }
 
     @Test
-    fun `Decrement method isn't updating the actual instance`() {
+    fun `Decrement method isn't updating the instance`() {
         val i = 12
         i.dec()
         assertEquals(12, i)
