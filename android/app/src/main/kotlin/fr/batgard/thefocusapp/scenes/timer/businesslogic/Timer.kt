@@ -74,11 +74,14 @@ class TimerImpl(private val initialTimerInfo: TimerInfo): Timer {
                     )
                 }
             }
-            else ->
+            else -> {
+                completedPomodoroCount++
                 Activity(ActivityType.POMODORO,
                         currentActivity.running,
                         Duration(initialTimerInfo.configuration.pomodoroDurationInMin)
                 )
+            }
+
         }
 
     }
