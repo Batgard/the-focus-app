@@ -4,6 +4,7 @@ import android.os.CountDownTimer
 
 interface Timer {
     fun toggle()
+    fun stop()
     fun getPomodoroDuration(): Duration
     fun getCurrentActivity(): Activity
     fun isRunning(): Boolean
@@ -32,7 +33,12 @@ class TimerImpl(private val initialTimerInfo: TimerInfo): Timer {
         currentActivity = currentActivity.getNewToggledActivity()
         listener?.invoke(currentActivity)
     }
-    
+
+    override fun stop() {
+        countDown?.cancel()
+        currentActivity = Activity(currentActivity.type, false, currentActivity.remainingTime)
+    }
+
     override fun getPomodoroDuration(): Duration = currentActivity.remainingTime
 
     override fun getCurrentActivity(): Activity = currentActivity

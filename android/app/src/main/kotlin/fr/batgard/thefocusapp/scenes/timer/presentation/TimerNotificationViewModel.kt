@@ -9,31 +9,37 @@ interface TimerNotificationViewModel {
     fun getTitle(): String
     fun getBody(): String
     fun getButtonLabel(): ButtonState
-    fun setNotificationChangeListener(listener: (content: NotificationContent) -> Unit)
+    fun setNotificationChangeListener(listener: () -> Unit)
+    fun setNotificationActionStateChangeListener(listener: (buttonState: ButtonState) -> Unit)
     fun onPlayPauseButtonTap()
+    fun onNotificationTap()
 }
 
 class TimerNotificationViewModelImpl(private val pomodoroTimer: Timer) : TimerNotificationViewModel {
 
-    private var notificationContentListener: ((content: NotificationContent) -> Unit)? = null
+    private var notificationContentListener: (() -> Unit)? = null
+    private var notificationActionChangesListener: ((buttonState: ButtonState) -> Unit)? = null
 
     init {
         pomodoroTimer.onActivityChange {
-            notificationContentListener?.invoke(
-                    NotificationContent(
-                            title = formatTitle(it),
-                            body = formatBody(it),
-                            buttonState = getButtonLabel()
-                    )
-            )
+            notificationContentListener?.invoke()
         }
     }
 
-    override fun setNotificationChangeListener(listener: (content: NotificationContent) -> Unit) {
+    override fun setNotificationChangeListener(listener: () -> Unit) {
         notificationContentListener = listener
     }
 
+    override fun setNotificationActionStateChangeListener(listener: (buttonState: ButtonState) -> Unit) {
+        notificationActionChangesListener = listener
+    }
+
     override fun onPlayPauseButtonTap() {
+        pomodoroTimer.toggle()
+        notificationActionChangesListener?.invoke(getButtonLabel())
+    }
+
+    override fun onNotificationTap() {
         pomodoroTimer.toggle()
     }
 

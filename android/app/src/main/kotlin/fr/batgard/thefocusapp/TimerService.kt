@@ -14,6 +14,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerImpl
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerInfo
+import fr.batgard.thefocusapp.scenes.timer.presentation.ButtonState
 import fr.batgard.thefocusapp.scenes.timer.presentation.NotificationContent
 import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewModel
 import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewModelImpl
@@ -21,6 +22,8 @@ import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewMod
 interface TimerNotification {
     fun setupConfiguration(timerInfo: TimerInfo)
     fun setNotificationTapListener(listener: () -> Unit)
+    fun setNotificationActionPlayTapsListener(listener: () -> Unit)
+    fun setNotificationActionPauseTapsListener(listener: () -> Unit)
 }
 
 class TimerService : Service(), TimerNotification {
@@ -45,6 +48,8 @@ class TimerService : Service(), TimerNotification {
 
     private val binder = TimerServiceBinder()
     private var notificationTapListener: (() -> Unit)? = null
+    private var playTapsListener: (() -> Unit)? = null
+    private var pauseTapsListener: (() -> Unit)? = null
 
     private lateinit var playPauseButtonPendingIntent: PendingIntent
 
@@ -72,7 +77,10 @@ class TimerService : Service(), TimerNotification {
     override fun setupConfiguration(timerInfo: TimerInfo) {
         viewModel = TimerNotificationViewModelImpl(TimerImpl(timerInfo))
         viewModel?.setNotificationChangeListener {
-            updateNotification(it)
+            updateNotification()
+        }
+        viewModel?.setNotificationActionStateChangeListener { 
+            notifyFlutterApp(it)
         }
         startForegroundWithNotification()
     }
@@ -81,8 +89,23 @@ class TimerService : Service(), TimerNotification {
         notificationTapListener = listener
     }
 
+    override fun setNotificationActionPlayTapsListener(listener: () -> Unit) {
+        playTapsListener = listener
+    }
+
+    override fun setNotificationActionPauseTapsListener(listener: () -> Unit) {
+        pauseTapsListener = listener
+    }
+
     //endregion timerInfo
 
+    private fun notifyFlutterApp(buttonState: ButtonState) {
+        when(buttonState) {
+            ButtonState.PAUSED -> playTapsListener?.invoke()
+            ButtonState.PLAYING -> pauseTapsListener?.invoke()
+        }
+    }
+    
     private fun registerBroadcastReceivers() {
         notificationTapBroadcastReceiver = NotificationInteractionBroadcastReceiver(::onNotificationTapped)
         notificationActionTapBroadcastReceiver = NotificationInteractionBroadcastReceiver(::onPlayPauseAction)
@@ -97,6 +120,7 @@ class TimerService : Service(), TimerNotification {
     }
 
     private fun onNotificationTapped() {
+        viewModel?.onNotificationTap()
         notificationTapListener?.invoke()
     }
     
@@ -120,7 +144,7 @@ class TimerService : Service(), TimerNotification {
         }
     }
 
-    private fun updateNotification(content: NotificationContent) {
+    private fun updateNotification() {
         val notification = getNotification()
         notificationManager?.notify(NOTIFICATION_ID, notification)
     }

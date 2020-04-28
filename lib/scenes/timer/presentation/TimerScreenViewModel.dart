@@ -27,10 +27,24 @@ class TimerScreenViewModel extends State<TimerScreenView> with WidgetsBindingObs
     final notification = TimerNotification(context: context, formatter: _timeFormatter);
     timer = PomodoroTimer(formatter: _timeFormatter, notification: notification);
     timer.timerTypeChanges().listen((Activity startingActivity) {
-      setState(() {
-      });
+      setState(() {});
     });
     WidgetsBinding.instance.addObserver(this);
+    methodChannel.setMethodCallHandler( (MethodCall call) {
+      switch(call.method) {
+        case "pause":
+          timer._pause();
+          break;
+        case "resume":
+          timer._resume();
+          break;
+        default: break;
+      }
+
+      setState(() {});
+
+      return null;
+    });
   }
 
   @override
@@ -269,7 +283,9 @@ class PomodoroTimer {
   }
 
   void _resume() {
-    _startTimer();
+    if (!isRunning()) {
+      _startTimer();
+    }
   }
 }
 
