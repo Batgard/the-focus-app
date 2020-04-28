@@ -4,9 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.os.Bundle
 import android.os.IBinder
-import android.os.PersistableBundle
 import androidx.annotation.NonNull
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerInfo
 import io.flutter.embedding.android.FlutterActivity
@@ -45,7 +43,6 @@ class MainActivity: FlutterActivity() {
         initialTimerInfo = json.parse(TimerInfo.serializer(), rawTimerInfo)
 
         val intent = Intent(context, TimerService::class.java)
-//        ContextCompat.startForegroundService(this, intent)
 
         bindService(intent,
                 connection,
@@ -65,6 +62,9 @@ class MainActivity: FlutterActivity() {
             timerNotification = binder.getRef()
             initialTimerInfo?.let {
                 timerNotification?.setupConfiguration(it)
+            }
+            timerNotification?.setNotificationTapListener {
+                startActivity(Intent(context, MainActivity::class.java))
             }
         }
 

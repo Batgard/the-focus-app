@@ -20,17 +20,20 @@ import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewMod
 
 interface TimerNotification {
     fun setupConfiguration(timerInfo: TimerInfo)
+    fun setNotificationTapListener(listener: () -> Unit)
 }
 
 class TimerService : Service(), TimerNotification {
 
     companion object {
-        const val BROADCAST_ACTION = "fr.batgard.thefocusapp.PLAY_PAUSE_ACTION"
+        const val BROADCAST_PLAY_PAUSE_ACTION = "fr.batgard.thefocusapp.PLAY_PAUSE_ACTION"
+        const val BROADCAST_NOTIF_TAPPED_ACTION = "fr.batgard.thefocusapp.NOTIF_TAPPED_ACTION"
         const val NOTIFICATION_ID = 1
     }
 
     private var viewModel: TimerNotificationViewModel? = null
-    private var serviceNotificationActionBroadcastReceiver: MyBroadcastReceiver? = null
+    private var notificationActionTapBroadcastReceiver: NotificationInteractionBroadcastReceiver? = null
+    private var notificationTapBroadcastReceiver: NotificationInteractionBroadcastReceiver? = null
 
     var notificationManager: NotificationManager? = null
 
@@ -41,12 +44,13 @@ class TimerService : Service(), TimerNotification {
     }
 
     private val binder = TimerServiceBinder()
+    private var notificationTapListener: (() -> Unit)? = null
 
     private lateinit var playPauseButtonPendingIntent: PendingIntent
 
     override fun onCreate() {
         super.onCreate()
-        registerBroadcastReceiver()
+        registerBroadcastReceivers()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             notificationManager = getSystemService(NotificationManager::class.java)
         }
@@ -73,24 +77,36 @@ class TimerService : Service(), TimerNotification {
         startForegroundWithNotification()
     }
 
+    override fun setNotificationTapListener(listener: () -> Unit) {
+        notificationTapListener = listener
+    }
+
     //endregion timerInfo
 
-    private fun registerBroadcastReceiver() {
-        serviceNotificationActionBroadcastReceiver = MyBroadcastReceiver(::onPlayPauseAction)
-        registerReceiver(serviceNotificationActionBroadcastReceiver, IntentFilter(BROADCAST_ACTION))
+    private fun registerBroadcastReceivers() {
+        notificationTapBroadcastReceiver = NotificationInteractionBroadcastReceiver(::onNotificationTapped)
+        notificationActionTapBroadcastReceiver = NotificationInteractionBroadcastReceiver(::onPlayPauseAction)
+        registerReceiver(notificationTapBroadcastReceiver, IntentFilter(BROADCAST_NOTIF_TAPPED_ACTION))
+        registerReceiver(notificationActionTapBroadcastReceiver, IntentFilter(BROADCAST_PLAY_PAUSE_ACTION))
+        
     }
 
     private fun unregisterBroadcastReceiver() {
-        unregisterReceiver(serviceNotificationActionBroadcastReceiver)
+        unregisterReceiver(notificationTapBroadcastReceiver)
+        unregisterReceiver(notificationActionTapBroadcastReceiver)
     }
 
+    private fun onNotificationTapped() {
+        notificationTapListener?.invoke()
+    }
+    
     private fun onPlayPauseAction() {
         viewModel?.onPlayPauseButtonTap()
     }
 
     private fun startForegroundWithNotification() {
         val actionIntent = Intent().apply {
-            action = BROADCAST_ACTION
+            action = BROADCAST_PLAY_PAUSE_ACTION
         }
 
         playPauseButtonPendingIntent =
@@ -110,6 +126,14 @@ class TimerService : Service(), TimerNotification {
     }
 
     private fun getNotification(): Notification? {
+        val actionIntent = Intent().apply {
+            action = BROADCAST_NOTIF_TAPPED_ACTION
+        }
+
+        val notificationTapPendingIntent =
+                PendingIntent.getBroadcast(this, 0, actionIntent, 0)
+
+
         return NotificationCompat.Builder(this, getString(R.string.notification_channel_id))
                 .setContentText(viewModel?.getTitle())
                 .setContentTitle(viewModel?.getBody())
@@ -119,11 +143,14 @@ class TimerService : Service(), TimerNotification {
                                 viewModel?.getButtonLabel()?.name,
                                 playPauseButtonPendingIntent
                         )
+                )
+                .setContentIntent(
+                    notificationTapPendingIntent
                 ).build()
     }
 }
 
-class MyBroadcastReceiver(private val actionListener: () -> Unit) : BroadcastReceiver() {
+class NotificationInteractionBroadcastReceiver(private val actionListener: () -> Unit) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         actionListener.invoke()
     }
