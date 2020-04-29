@@ -19,7 +19,7 @@ class TimerNotificationViewModelImplTest {
         every { mockedTimer.getCurrentActivity() }.answers {
             Activity(ActivityType.POMODORO, false, Duration(25, 0))
         }
-        val timerViewModel = TimerNotificationViewModelImpl(mockedTimer)
+        val timerViewModel = TimerNotificationViewModelImpl(mockedTimer, mockk())
 
         assertEquals("25:00", timerViewModel.getBody())
     }

@@ -3,6 +3,14 @@
     <string name="app_name">The Focus App</string>
     <string name="timer_notification_channel_title">Displays the timer as a notification</string>
 
+    <string name="timer_notification_action_button_pause">PAUSE</string>
+    <string name="timer_notification_action_button_resume">RESUME</string>
+    <string name="timer_notification_body_pomodoro">Pomodoro</string>
+    <string name="timer_notification_body_short_break">Short break</string>
+    <string name="timer_notification_body_long_break">Long break</string>
+    <string name="timer_notification_body_activity_paused"> - paused</string>
+    <string name="timer_notification_body_activity_on_going"> - on going</string>
+
     <string name="notification_channel_id"
         translatable="false">fr.batgard.thefocusapp.timer.notification</string>
 </resources>

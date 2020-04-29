@@ -12,12 +12,14 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import fr.batgard.thefocusapp.core.presentation.AndroidResourceMapper
+import fr.batgard.thefocusapp.core.presentation.StringResourceProviderImpl
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerImpl
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerInfo
 import fr.batgard.thefocusapp.scenes.timer.presentation.ButtonState
-import fr.batgard.thefocusapp.scenes.timer.presentation.NotificationContent
 import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewModel
 import fr.batgard.thefocusapp.scenes.timer.presentation.TimerNotificationViewModelImpl
+import fr.batgard.thefocusapp.scenes.timer.presentation.labels.NotificationLabel
 
 interface TimerNotification {
     fun setupConfiguration(timerInfo: TimerInfo)
@@ -75,7 +77,16 @@ class TimerService : Service(), TimerNotification {
 //region timerInfo
 
     override fun setupConfiguration(timerInfo: TimerInfo) {
-        viewModel = TimerNotificationViewModelImpl(TimerImpl(timerInfo))
+        val resourceMapper = AndroidResourceMapper()
+        resourceMapper.addEntry(NotificationLabel.ACTION_PAUSE.resourceId, R.string.timer_notification_action_button_pause)
+        resourceMapper.addEntry(NotificationLabel.ACTION_RESUME.resourceId, R.string.timer_notification_action_button_resume)
+        resourceMapper.addEntry(NotificationLabel.BODY_LONG_BREAK.resourceId, R.string.timer_notification_body_long_break)
+        resourceMapper.addEntry(NotificationLabel.BODY_SHORT_BREAK.resourceId, R.string.timer_notification_body_short_break)
+        resourceMapper.addEntry(NotificationLabel.BODY_POMODORO.resourceId, R.string.timer_notification_body_pomodoro)
+        resourceMapper.addEntry(NotificationLabel.BODY_ACTIVITY_PAUSED.resourceId, R.string.timer_notification_body_activity_paused)
+        resourceMapper.addEntry(NotificationLabel.BODY_ACTIVITY_ON_GOING.resourceId, R.string.timer_notification_body_activity_on_going)
+        
+        viewModel = TimerNotificationViewModelImpl(TimerImpl(timerInfo), StringResourceProviderImpl(resources, resourceMapper))
         viewModel?.setNotificationChangeListener {
             updateNotification()
         }
@@ -164,7 +175,7 @@ class TimerService : Service(), TimerNotification {
                 .setSmallIcon(R.drawable.ic_tomato_timer)
                 .addAction(
                         NotificationCompat.Action(null,
-                                viewModel?.getButtonLabel()?.name,
+                                viewModel?.getButtonLabel(),
                                 playPauseButtonPendingIntent
                         )
                 )
