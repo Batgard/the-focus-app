@@ -27,6 +27,7 @@ interface TimerNotification {
     fun setNotificationTapListener(listener: () -> Unit)
     fun setNotificationActionPlayTapsListener(listener: () -> Unit)
     fun setNotificationActionPauseTapsListener(listener: () -> Unit)
+    fun resetListeners()
 }
 
 class TimerService : Service(), TimerNotification {
@@ -73,6 +74,8 @@ class TimerService : Service(), TimerNotification {
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.d(TimerService::class.java.simpleName, "onUnbind")
+        viewModel?.deinit()
+        viewModel = null
         return super.onUnbind(intent)
     }
 
@@ -116,6 +119,12 @@ class TimerService : Service(), TimerNotification {
         pauseTapsListener = listener
     }
 
+    override fun resetListeners() {
+        pauseTapsListener = null
+        playTapsListener = null
+        notificationTapListener = null
+    }
+
     //endregion timerInfo
 
     private fun notifyFlutterApp(buttonState: ButtonState) {
@@ -130,7 +139,6 @@ class TimerService : Service(), TimerNotification {
         notificationActionTapBroadcastReceiver = NotificationInteractionBroadcastReceiver(::onPlayPauseAction)
         registerReceiver(notificationTapBroadcastReceiver, IntentFilter(BROADCAST_NOTIF_TAPPED_ACTION))
         registerReceiver(notificationActionTapBroadcastReceiver, IntentFilter(BROADCAST_PLAY_PAUSE_ACTION))
-        
     }
 
     private fun unregisterBroadcastReceiver() {

@@ -16,6 +16,7 @@ interface TimerNotificationViewModel {
     fun setNotificationActionStateChangeListener(listener: (buttonState: ButtonState) -> Unit)
     fun onPlayPauseButtonTap()
     fun onNotificationTap()
+    fun deinit()
 }
 
 class TimerNotificationViewModelImpl(private val pomodoroTimer: Timer,
@@ -29,6 +30,12 @@ private val resourceProvider: StringResourceProvider
         pomodoroTimer.onActivityChange {
             notificationContentListener?.invoke()
         }
+    }
+
+    override fun deinit() {
+        pomodoroTimer.stop()
+        notificationContentListener = null
+        notificationActionChangesListener = null
     }
 
     override fun setNotificationChangeListener(listener: () -> Unit) {

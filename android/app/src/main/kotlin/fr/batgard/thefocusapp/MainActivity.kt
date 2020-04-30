@@ -19,6 +19,7 @@ import kotlinx.serialization.json.JsonConfiguration
 class MainActivity : FlutterActivity() {
 
     private var timerNotification: TimerNotification? = null
+    private var connection: ServiceConnection? = null
     private var initialTimerInfo: TimerInfo? = null
     private val json = Json(JsonConfiguration.Stable)
     private lateinit var methodChannel: MethodChannel
@@ -56,42 +57,52 @@ class MainActivity : FlutterActivity() {
         } else {
             val intent = Intent(context, TimerService::class.java)
 
+            val connection = createServiceConnection()
+
             bindService(intent,
                     connection,
                     Context.BIND_AUTO_CREATE)
+
+            this.connection = connection
         }
     }
 
     private fun stopService() {
-        unbindService(connection)
-        timerNotification = null
+        connection?.let {
+            unbindService(it)
+            timerNotification?.resetListeners()
+            timerNotification = null
+        }
+
+        connection = null
     }
 
     /** Defines callbacks for service binding, passed to bindService()  */
-    private val connection = object : ServiceConnection {
+    fun createServiceConnection() : ServiceConnection {
+        return object: ServiceConnection {
+            override fun onServiceConnected(className: ComponentName, service: IBinder) {
+                Log.d(MainActivity::class.java.simpleName, "onServiceConnected")
+                // We've bound to LocalService, cast the IBinder and get LocalService instance
+                val binder = service as TimerService.TimerServiceBinder
+                timerNotification = binder.getRef()
+                initialTimerInfo?.let {
+                    timerNotification?.setupConfiguration(it)
+                }
+                timerNotification?.setNotificationTapListener {
+                    startActivity(Intent(context, MainActivity::class.java))
+                    stopService()
+                }
+                timerNotification?.setNotificationActionPauseTapsListener {
+                    methodChannel.invokeMethod("resume", null)
+                }
+                timerNotification?.setNotificationActionPlayTapsListener {
+                    methodChannel.invokeMethod("pause", null)
+                }
+            }
 
-        override fun onServiceConnected(className: ComponentName, service: IBinder) {
-            Log.d(MainActivity::class.java.simpleName, "onServiceConnected")
-            // We've bound to LocalService, cast the IBinder and get LocalService instance
-            val binder = service as TimerService.TimerServiceBinder
-            timerNotification = binder.getRef()
-            initialTimerInfo?.let {
-                timerNotification?.setupConfiguration(it)
+            override fun onServiceDisconnected(arg0: ComponentName) {
+                Log.d(MainActivity::class.java.simpleName, "onServiceDisconnected")
             }
-            timerNotification?.setNotificationTapListener {
-                startActivity(Intent(context, MainActivity::class.java))
-                stopService()
-            }
-            timerNotification?.setNotificationActionPauseTapsListener {
-                methodChannel.invokeMethod("pause", null)
-            }
-            timerNotification?.setNotificationActionPlayTapsListener {
-                methodChannel.invokeMethod("resume", null)
-            }
-        }
-
-        override fun onServiceDisconnected(arg0: ComponentName) {
-            Log.d(MainActivity::class.java.simpleName, "onServiceDisconnected")
         }
     }
 }

@@ -32,13 +32,18 @@ class TimerScreenViewModel extends State<TimerScreenView> with WidgetsBindingObs
     });
     WidgetsBinding.instance.addObserver(this);
     methodChannel.setMethodCallHandler( (MethodCall call) {
+      print(call.method);
       switch(call.method) {
         case "pause":
-          timer._pause();
-          break;
+          {
+            timer._pause();
+            break;
+          }
         case "resume":
-          timer._resume();
-          break;
+          {
+            timer._resume();
+            break;
+          }
         default: break;
       }
 
