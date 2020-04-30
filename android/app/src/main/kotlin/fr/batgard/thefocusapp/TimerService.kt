@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import fr.batgard.thefocusapp.core.presentation.AndroidResourceMapper
 import fr.batgard.thefocusapp.core.presentation.StringResourceProviderImpl
@@ -57,6 +58,7 @@ class TimerService : Service(), TimerNotification {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(TimerService::class.java.simpleName, "onCreate")
         registerBroadcastReceivers()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             notificationManager = getSystemService(NotificationManager::class.java)
@@ -65,16 +67,22 @@ class TimerService : Service(), TimerNotification {
     }
 
     override fun onBind(intent: Intent?): IBinder? {
-        startForegroundWithNotification()
+        Log.d(TimerService::class.java.simpleName, "onBind")
         return binder
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        unregisterBroadcastReceiver()
+        Log.d(TimerService::class.java.simpleName, "onUnbind")
         return super.onUnbind(intent)
     }
 
-//region timerInfo
+    override fun onDestroy() {
+        Log.d(TimerService::class.java.simpleName, "onDestroy")
+        unregisterBroadcastReceiver()
+        super.onDestroy()
+    }
+
+    //region timerInfo
 
     override fun setupConfiguration(timerInfo: TimerInfo) {
         val resourceMapper = AndroidResourceMapper()

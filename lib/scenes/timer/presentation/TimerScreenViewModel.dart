@@ -24,6 +24,7 @@ class TimerScreenViewModel extends State<TimerScreenView> with WidgetsBindingObs
   @override
   void initState() {
     super.initState();
+    print("initState()");
     final notification = TimerNotification(context: context, formatter: _timeFormatter);
     timer = PomodoroTimer(formatter: _timeFormatter, notification: notification);
     timer.timerTypeChanges().listen((Activity startingActivity) {
@@ -51,6 +52,7 @@ class TimerScreenViewModel extends State<TimerScreenView> with WidgetsBindingObs
   void dispose() {
     timer.dispose();
     WidgetsBinding.instance.removeObserver(this);
+    print("dispose()");
     super.dispose();
   }
 
@@ -153,13 +155,18 @@ class TimerScreenViewModel extends State<TimerScreenView> with WidgetsBindingObs
 
     @override
     void didChangeAppLifecycleState(AppLifecycleState state) {
+    print(state.toString());
       switch(state) {
         case AppLifecycleState.resumed:
+          {
             stopTimerNotification();
             break;
+          }
           case AppLifecycleState.paused:
-            startTimerNotification();
-            break;
+            {
+              startTimerNotification();
+              break;
+            }
           default: break;
         }
       }

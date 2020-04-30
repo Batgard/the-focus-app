@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.util.Log
 import androidx.annotation.NonNull
 import fr.batgard.thefocusapp.scenes.timer.businesslogic.TimerInfo
 import io.flutter.embedding.android.FlutterActivity
@@ -22,6 +23,8 @@ class MainActivity : FlutterActivity() {
     private val json = Json(JsonConfiguration.Stable)
     private lateinit var methodChannel: MethodChannel
 
+    val TAG = MainActivity::class.java.simpleName
+
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         GeneratedPluginRegistrant.registerWith(flutterEngine)
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "fr.batgard.thefocusapp.notificationChannel")
@@ -29,9 +32,11 @@ class MainActivity : FlutterActivity() {
                 .setMethodCallHandler { methodCall, _ ->
                     when (methodCall.method) {
                         "startTimerNotification" -> {
+                            Log.d(TAG, "startTimerNotification")
                             startService(methodCall.arguments.toString())
                         }
                         "stopTimerNotification" -> {
+                            Log.d(TAG, "stopTimerNotification")
                             stopService()
                         }
                     }
@@ -66,6 +71,7 @@ class MainActivity : FlutterActivity() {
     private val connection = object : ServiceConnection {
 
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            Log.d(MainActivity::class.java.simpleName, "onServiceConnected")
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             val binder = service as TimerService.TimerServiceBinder
             timerNotification = binder.getRef()
@@ -85,6 +91,7 @@ class MainActivity : FlutterActivity() {
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
+            Log.d(MainActivity::class.java.simpleName, "onServiceDisconnected")
         }
     }
 }
